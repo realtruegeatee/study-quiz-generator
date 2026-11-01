@@ -14,6 +14,8 @@ Paste notes or upload a `.pdf`, `.txt`, `.md`, `.png`, `.jpg`, `.jpeg`, or `.web
 
 The API key is used only in the current browser session and is never committed to this repository. For a public production app, move the AI request behind a serverless backend before sharing it widely.
 
+Uploads are limited to 25 MB per file. Direct AI understanding supports visual PDFs and common image formats; the original file is preserved for the AI request rather than being reduced to pasted text first.
+
 ## GitHub Pages
 
 The site deploys automatically from `main` using the workflow in `.github/workflows/deploy-pages.yml`. After the pull request is merged and the first workflow completes, it will be available at:

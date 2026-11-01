@@ -47,6 +47,7 @@ h2 { margin: 0; font-size: 19px; letter-spacing: -.4px; }
 textarea { display: block; width: 100%; height: 124px; resize: vertical; border: 1px solid var(--line); border-radius: 10px; padding: 13px; outline: none; color: var(--ink); background: white; font-size: 13px; line-height: 1.5; }
 textarea:focus { border-color: #9ab6a1; box-shadow: 0 0 0 3px #e8f2e9; }
 .input-footer { display: flex; justify-content: space-between; margin-top: 8px; color: var(--muted); font-size: 11px; }
+.input-footer #fileName { overflow: hidden; max-width: 42%; text-overflow: ellipsis; white-space: nowrap; }
 .text-button { padding: 0; border: 0; color: var(--green); background: none; font-size: 11px; }
 .setting { margin: 25px 0; }
 .setting > label { display: block; margin-bottom: 9px; font-size: 12px; font-weight: 600; }
