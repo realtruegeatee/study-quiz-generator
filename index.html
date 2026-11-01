@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./styles.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs" type="module"></script>
   </head>
   <body>
     <div class="app-shell">
@@ -38,10 +39,10 @@
                 <span class="step-number">01</span>
                 <h2>Add your material</h2>
               </div>
-              <span class="file-hint">TXT or MD</span>
+              <span class="file-hint">PDF, TXT or MD</span>
             </div>
             <label class="drop-zone" id="dropZone" for="fileInput">
-              <input id="fileInput" type="file" accept=".txt,.md,text/plain,text/markdown" hidden />
+              <input id="fileInput" type="file" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown" hidden />
               <span class="upload-icon">↑</span>
               <strong>Drop a file here</strong>
               <span>or <u>browse your files</u></span>
