@@ -13,6 +13,7 @@ const nextButton = document.querySelector("#nextButton");
 const feedback = document.querySelector("#feedback");
 const languageButton = document.querySelector("#languageButton");
 const uploadStatus = document.querySelector("#uploadStatus");
+const fileName = document.querySelector("#fileName");
 const aiKeyInput = document.querySelector("#aiKey");
 const mcqToggle = document.querySelector("#mcqToggle");
 const trueFalseToggle = document.querySelector("#trueFalseToggle");
@@ -23,6 +24,8 @@ let sourceFile = null;
 let currentQuestion = 0;
 let score = 0;
 let answered = false;
+const MAX_FILE_SIZE = 25 * 1024 * 1024;
+const supportedExtensions = /\.(pdf|txt|md|png|jpe?g|webp)$/i;
 
 const pdfjsReady = import("./vendor/pdfjs/pdf.min.mjs").then(pdfjs => {
   pdfjs.GlobalWorkerOptions.workerSrc = "./vendor/pdfjs/pdf.worker.min.mjs";
@@ -41,7 +44,9 @@ const translations = {
 function updateCount() {
   const count = notesInput.value.length;
   charCount.textContent = `${count.toLocaleString()} ${quizLanguage === "de" ? "Zeichen" : "characters"}`;
-  generateButton.disabled = count < 30;
+  const hasDirectFile = Boolean(sourceFile && aiKeyInput.value.trim());
+  const hasQuestionType = mcqToggle.checked || trueFalseToggle.checked;
+  generateButton.disabled = (!hasDirectFile && count < 30) || !hasQuestionType;
 }
 
 function getFileDataUrl(file) {
@@ -103,7 +108,9 @@ async function makeFileAwareQuiz(file, count, language) {
   });
   if (!response.ok) throw new Error(`AI request failed (${response.status}). Check the API key and model access.`);
   const result = await response.json();
-  const parsed = JSON.parse(result.output_text);
+  const outputText = result.output_text || result.output?.flatMap(item => item.content || []).find(item => item.type === "output_text")?.text;
+  if (!outputText) throw new Error("The AI returned no quiz data. Please try again.");
+  const parsed = JSON.parse(outputText);
   return parsed.questions.map(question => ({
     type: question.type,
     text: question.question,
@@ -181,6 +188,7 @@ async function startQuiz() {
     quiz = sourceFile && aiKeyInput.value.trim()
       ? await makeFileAwareQuiz(sourceFile, Number(questionCount.value), quizLanguage)
       : makeQuiz(text, Number(questionCount.value), quizLanguage);
+    if (!quiz.length) throw new Error("No quiz questions were returned.");
   } catch (error) {
     console.error("Could not generate an AI quiz", error);
     uploadStatus.textContent = error.message;
@@ -209,9 +217,27 @@ function finishQuiz() {
 
 notesInput.value = demoNotes;
 updateCount();
-notesInput.addEventListener("input", updateCount);
+notesInput.addEventListener("input", () => {
+  if (sourceFile && notesInput.value !== "") {
+    sourceFile = null;
+    fileInput.value = "";
+    fileName.textContent = "";
+  }
+  updateCount();
+});
+aiKeyInput.addEventListener("input", updateCount);
+mcqToggle.addEventListener("change", updateCount);
+trueFalseToggle.addEventListener("change", updateCount);
 questionCount.addEventListener("input", () => { questionCountValue.textContent = questionCount.value; });
-clearButton.addEventListener("click", () => { notesInput.value = ""; updateCount(); notesInput.focus(); });
+clearButton.addEventListener("click", () => {
+  notesInput.value = "";
+  sourceFile = null;
+  fileInput.value = "";
+  fileName.textContent = "";
+  uploadStatus.textContent = "";
+  updateCount();
+  notesInput.focus();
+});
 generateButton.addEventListener("click", startQuiz);
 nextButton.addEventListener("click", () => { currentQuestion++; currentQuestion < quiz.length ? renderQuestion() : finishQuiz(); });
 document.querySelector("#retryButton").addEventListener("click", startQuiz);
@@ -267,7 +293,16 @@ async function extractPdfWithOcr(file) {
 
 async function loadFile(file) {
   if (!file) return;
+  if (!supportedExtensions.test(file.name)) {
+    uploadStatus.textContent = "Unsupported file type. Use PDF, PNG, JPG, WEBP, TXT, or MD.";
+    return;
+  }
+  if (file.size > MAX_FILE_SIZE) {
+    uploadStatus.textContent = "That file is over the 25 MB limit. Choose a smaller file.";
+    return;
+  }
   sourceFile = file;
+  fileName.textContent = file.name;
   try {
     const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
     const isImage = file.type.startsWith("image/");
