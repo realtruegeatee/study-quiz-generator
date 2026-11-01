@@ -42,16 +42,22 @@
             </div>
             <label class="drop-zone" id="dropZone" for="fileInput">
               <input id="fileInput" type="file" accept=".pdf,.txt,.md,.png,.jpg,.jpeg,.webp,application/pdf,text/plain,text/markdown,image/*" hidden />
+              <input id="cameraInput" type="file" accept="image/*" capture="environment" hidden />
               <span class="upload-icon">↑</span>
               <strong>Drop a file here</strong>
               <span>or <u>browse your files</u></span>
             </label>
             <p class="upload-status" id="uploadStatus" role="status"></p>
+            <div class="file-preview hidden" id="filePreview">
+              <img id="imagePreview" alt="Preview of the selected study image" />
+              <span id="previewLabel"></span>
+            </div>
             <div class="divider"><span>OR PASTE NOTES</span></div>
             <textarea id="notesInput" placeholder="Paste a lecture, chapter summary, vocabulary list, or any notes here..."></textarea>
             <div class="input-footer">
               <span id="charCount">0 characters</span>
               <span id="fileName"></span>
+              <button class="text-button" id="cameraButton" type="button">Use camera</button>
               <button class="text-button" id="clearButton">Clear</button>
             </div>
           </div>
@@ -68,6 +74,13 @@
               <div class="segmented" id="quizLanguage">
                 <button class="selected" data-value="en">English</button>
                 <button data-value="de">Deutsch</button>
+              </div>
+              <div class="setting">
+                <label for="difficulty">Difficulty</label>
+                <div class="segmented" id="difficulty">
+                  <button class="selected" data-value="balanced">Balanced</button>
+                  <button data-value="challenge">Challenge</button>
+                </div>
               </div>
             </div>
             <div class="setting">
