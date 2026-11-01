@@ -12,6 +12,7 @@ const answers = document.querySelector("#answers");
 const nextButton = document.querySelector("#nextButton");
 const feedback = document.querySelector("#feedback");
 const languageButton = document.querySelector("#languageButton");
+const uploadStatus = document.querySelector("#uploadStatus");
 
 let quizLanguage = "en";
 let quiz = [];
@@ -23,6 +24,7 @@ const pdfjsReady = import("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38
   pdfjs.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
   return pdfjs;
 });
+const tesseractReady = import("https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.esm.min.js");
 
 const demoNotes = `Mitochondria are organelles found in most eukaryotic cells. They are often called the powerhouse of the cell because they produce ATP through cellular respiration.
 Photosynthesis converts light energy into chemical energy. It takes place mainly in the chloroplasts of plant cells.
@@ -139,12 +141,38 @@ document.querySelectorAll(".segmented button").forEach(button => button.addEvent
 
 async function extractPdfText(file) {
   const pdfjs = await pdfjsReady;
-  const document = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
   const pages = [];
-  for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber++) {
-    const page = await document.getPage(pageNumber);
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+    const page = await pdf.getPage(pageNumber);
     const content = await page.getTextContent();
     pages.push(content.items.map(item => item.str).join(" "));
+  }
+  return pages.join("\n\n");
+}
+
+async function extractPdfWithOcr(file) {
+  const pdfjs = await pdfjsReady;
+  const { createWorker } = await tesseractReady;
+  const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  const worker = await createWorker("eng+deu", 1, {
+    langPath: "https://tessdata.projectnaptha.com/4.0.0"
+  });
+  const pages = [];
+  try {
+    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+      uploadStatus.textContent = `Reading scanned PDF page ${pageNumber} of ${pdf.numPages}...`;
+      const page = await pdf.getPage(pageNumber);
+      const viewport = page.getViewport({ scale: 1.5 });
+      const canvas = document.createElement("canvas");
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
+      const result = await worker.recognize(canvas);
+      pages.push(result.data.text);
+    }
+  } finally {
+    await worker.terminate();
   }
   return pages.join("\n\n");
 }
@@ -152,16 +180,21 @@ async function extractPdfText(file) {
 async function loadFile(file) {
   if (!file) return;
   try {
-    notesInput.value = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
-      ? await extractPdfText(file)
-      : await file.text();
-    updateCount();
-    if (notesInput.value.trim().length < 30) {
-      feedback.textContent = "This file has little or no selectable text. Try a text-based PDF or paste notes.";
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    uploadStatus.textContent = isPdf ? "Reading PDF..." : "Loading notes...";
+    let extractedText = isPdf ? await extractPdfText(file) : await file.text();
+    if (isPdf && extractedText.trim().length < 30) {
+      uploadStatus.textContent = "This looks like a scanned PDF. Reading the page images...";
+      extractedText = await extractPdfWithOcr(file);
     }
+    notesInput.value = extractedText;
+    updateCount();
+    uploadStatus.textContent = notesInput.value.trim().length < 30
+      ? "No readable text found. Try a clearer PDF or paste notes."
+      : "File loaded — ready to make a quiz.";
   } catch (error) {
     console.error("Could not read uploaded file", error);
-    feedback.textContent = "Could not read that file. Please try another PDF, TXT, or MD file.";
+    uploadStatus.textContent = "Could not read that file. Please try another PDF, TXT, or MD file.";
   }
 }
 fileInput.addEventListener("change", event => loadFile(event.target.files[0]));
