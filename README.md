@@ -10,7 +10,9 @@ This is a dependency-free browser MVP. Open `index.html` directly, or serve the 
 python3 -m http.server 4173
 ```
 
-Paste notes or upload a `.pdf`, `.txt`, or `.md` file, choose the quiz language and question count, then generate a quiz. Text-based PDFs are extracted with PDF.js; scanned/image-only PDFs automatically use browser-side English/German OCR through Tesseract.js. The current demo generates questions locally in the browser, so no API key or backend is required.
+Paste notes or upload a `.pdf`, `.txt`, `.md`, `.png`, `.jpg`, `.jpeg`, or `.webp` file, choose the quiz language and question count, then generate a quiz. For direct understanding of diagrams, images, handwriting, and page layout, enter an OpenAI API key in the optional AI field; the original file is sent directly to a vision-capable model. Without a key, PDFs use local text extraction/OCR and text files use local quiz generation.
+
+The API key is used only in the current browser session and is never committed to this repository. For a public production app, move the AI request behind a serverless backend before sharing it widely.
 
 ## GitHub Pages
 

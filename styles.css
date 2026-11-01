@@ -58,6 +58,10 @@ input[type=range] { width: 100%; accent-color: var(--green); }
 .range-labels { display: flex; justify-content: space-between; color: var(--muted); font-size: 10px; }
 .check-list { display: flex; gap: 18px; color: var(--muted); font-size: 12px; }
 .check-list input { accent-color: var(--green); }
+.optional-label { color: var(--muted); font-size: 10px; font-weight: 400; }
+.text-input { width: 100%; padding: 10px 11px; border: 1px solid var(--line); border-radius: 8px; outline: none; color: var(--ink); background: white; font-size: 12px; }
+.text-input:focus { border-color: #9ab6a1; box-shadow: 0 0 0 3px #e8f2e9; }
+.setting-help { margin: 6px 0 0; color: var(--muted); font-size: 10px; line-height: 1.4; }
 .primary-button, .secondary-button { display: flex; justify-content: space-between; align-items: center; width: 100%; border: 0; border-radius: 9px; padding: 13px 15px; color: #fff; background: var(--green); font-weight: 700; font-size: 13px; transition: .2s; }
 .primary-button:hover { background: #244b38; transform: translateY(-1px); }
 .primary-button:disabled { cursor: not-allowed; opacity: .45; transform: none; }

@@ -41,7 +41,7 @@
               <span class="file-hint">PDF, TXT or MD</span>
             </div>
             <label class="drop-zone" id="dropZone" for="fileInput">
-              <input id="fileInput" type="file" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown" hidden />
+              <input id="fileInput" type="file" accept=".pdf,.txt,.md,.png,.jpg,.jpeg,.webp,application/pdf,text/plain,text/markdown,image/*" hidden />
               <span class="upload-icon">↑</span>
               <strong>Drop a file here</strong>
               <span>or <u>browse your files</u></span>
@@ -81,8 +81,13 @@
                 <label><input type="checkbox" checked id="trueFalseToggle" /> <span>True or false</span></label>
               </div>
             </div>
+            <div class="setting">
+              <label for="aiKey">AI file understanding <span class="optional-label">optional</span></label>
+              <input class="text-input" id="aiKey" type="password" placeholder="OpenAI API key for visual files" autocomplete="off" />
+              <p class="setting-help">Sends the original file directly to a vision model. Your key stays in this browser.</p>
+            </div>
             <button class="primary-button" id="generateButton"><span>Generate quiz</span><span>→</span></button>
-            <p class="privacy-note">✦ Everything stays in your browser for this demo.</p>
+            <p class="privacy-note">✦ Without a key, local text/OCR processing is used.</p>
           </div>
         </section>
 

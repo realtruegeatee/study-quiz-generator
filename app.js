@@ -13,15 +13,19 @@ const nextButton = document.querySelector("#nextButton");
 const feedback = document.querySelector("#feedback");
 const languageButton = document.querySelector("#languageButton");
 const uploadStatus = document.querySelector("#uploadStatus");
+const aiKeyInput = document.querySelector("#aiKey");
+const mcqToggle = document.querySelector("#mcqToggle");
+const trueFalseToggle = document.querySelector("#trueFalseToggle");
 
 let quizLanguage = "en";
 let quiz = [];
+let sourceFile = null;
 let currentQuestion = 0;
 let score = 0;
 let answered = false;
 
-const pdfjsReady = import("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs").then(pdfjs => {
-  pdfjs.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
+const pdfjsReady = import("./vendor/pdfjs/pdf.min.mjs").then(pdfjs => {
+  pdfjs.GlobalWorkerOptions.workerSrc = "./vendor/pdfjs/pdf.worker.min.mjs";
   return pdfjs;
 });
 
@@ -38,6 +42,74 @@ function updateCount() {
   const count = notesInput.value.length;
   charCount.textContent = `${count.toLocaleString()} ${quizLanguage === "de" ? "Zeichen" : "characters"}`;
   generateButton.disabled = count < 30;
+}
+
+function getFileDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("Could not read the selected file."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function getQuizSchema() {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["questions"],
+    properties: {
+      questions: {
+        type: "array",
+        minItems: 1,
+        maxItems: 10,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["type", "question", "options", "answer"],
+          properties: {
+            type: { type: "string", enum: ["MULTIPLE CHOICE", "TRUE OR FALSE"] },
+            question: { type: "string" },
+            options: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 4 },
+            answer: { type: "string" }
+          }
+        }
+      }
+    }
+  };
+}
+
+async function makeFileAwareQuiz(file, count, language) {
+  const apiKey = aiKeyInput.value.trim();
+  if (!apiKey) return null;
+  const fileData = await getFileDataUrl(file);
+  const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+  const types = [mcqToggle.checked ? "multiple choice" : "", trueFalseToggle.checked ? "true or false" : ""].filter(Boolean).join(" and ");
+  const prompt = `Analyze the original study file, including its text, images, diagrams, tables, handwriting, and layout. Create exactly ${count} useful study questions in ${language === "de" ? "German" : "English"}. Use these question types when appropriate: ${types || "multiple choice"}. Return only the requested JSON. For multiple choice, include exactly four options and set answer to the exact correct option. For true or false, include exactly two options: True and False.`;
+  const content = [
+    { type: "input_text", text: prompt },
+    isPdf
+      ? { type: "input_file", filename: file.name, file_data: fileData }
+      : { type: "input_image", image_url: fileData }
+  ];
+  const response = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model: "gpt-4.1-mini",
+      input: [{ role: "user", content }],
+      text: { format: { type: "json_schema", name: "study_quiz", strict: true, schema: getQuizSchema() } }
+    })
+  });
+  if (!response.ok) throw new Error(`AI request failed (${response.status}). Check the API key and model access.`);
+  const result = await response.json();
+  const parsed = JSON.parse(result.output_text);
+  return parsed.questions.map(question => ({
+    type: question.type,
+    text: question.question,
+    options: question.options,
+    answer: question.answer
+  }));
 }
 
 function splitSentences(text) {
@@ -99,9 +171,23 @@ function selectAnswer(button, selected, correct) {
   nextButton.disabled = false;
 }
 
-function startQuiz() {
+async function startQuiz() {
   const text = notesInput.value.trim();
-  quiz = makeQuiz(text, Number(questionCount.value), quizLanguage);
+  generateButton.disabled = true;
+  uploadStatus.textContent = aiKeyInput.value.trim() && sourceFile
+    ? "Analyzing the original file with AI..."
+    : "Making a local quiz...";
+  try {
+    quiz = sourceFile && aiKeyInput.value.trim()
+      ? await makeFileAwareQuiz(sourceFile, Number(questionCount.value), quizLanguage)
+      : makeQuiz(text, Number(questionCount.value), quizLanguage);
+  } catch (error) {
+    console.error("Could not generate an AI quiz", error);
+    uploadStatus.textContent = error.message;
+    generateButton.disabled = false;
+    return;
+  }
+  generateButton.disabled = false;
   currentQuestion = 0;
   score = 0;
   resultsSection.classList.add("hidden");
@@ -152,10 +238,13 @@ async function extractPdfText(file) {
 
 async function extractPdfWithOcr(file) {
   const pdfjs = await pdfjsReady;
-  const { createWorker } = await import("https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.esm.min.js");
+  const tesseract = await import("./vendor/tesseract/tesseract.esm.min.js");
+  const { createWorker } = tesseract.default || tesseract;
   const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
   const worker = await createWorker(["eng", "deu"], 1, {
-    langPath: "https://tessdata.projectnaptha.com/4.0.0"
+    workerPath: "./vendor/tesseract/worker.min.js",
+    corePath: "./vendor/tesseract/tesseract-core-lstm.wasm.js",
+    langPath: "./vendor/tessdata"
   });
   const pages = [];
   try {
@@ -178,10 +267,18 @@ async function extractPdfWithOcr(file) {
 
 async function loadFile(file) {
   if (!file) return;
+  sourceFile = file;
   try {
     const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    const isImage = file.type.startsWith("image/");
     uploadStatus.textContent = isPdf ? "Reading PDF..." : "Loading notes...";
-    let extractedText = isPdf ? await extractPdfText(file) : await file.text();
+    if (isImage && !aiKeyInput.value.trim()) {
+      notesInput.value = "";
+      updateCount();
+      uploadStatus.textContent = "Images need an AI key for direct visual understanding.";
+      return;
+    }
+    let extractedText = isPdf ? await extractPdfText(file) : isImage ? "" : await file.text();
     if (isPdf && extractedText.trim().length < 30) {
       uploadStatus.textContent = "This looks like a scanned PDF. Reading the page images...";
       extractedText = await extractPdfWithOcr(file);
