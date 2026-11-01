@@ -20,8 +20,8 @@ let currentQuestion = 0;
 let score = 0;
 let answered = false;
 
-const pdfjsReady = import("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs").then(pdfjs => {
-  pdfjs.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
+const pdfjsReady = import("./vendor/pdfjs/pdf.min.mjs").then(pdfjs => {
+  pdfjs.GlobalWorkerOptions.workerSrc = "./vendor/pdfjs/pdf.worker.min.mjs";
   return pdfjs;
 });
 
@@ -152,10 +152,13 @@ async function extractPdfText(file) {
 
 async function extractPdfWithOcr(file) {
   const pdfjs = await pdfjsReady;
-  const { createWorker } = await import("https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.esm.min.js");
+  const tesseract = await import("./vendor/tesseract/tesseract.esm.min.js");
+  const { createWorker } = tesseract.default || tesseract;
   const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
   const worker = await createWorker(["eng", "deu"], 1, {
-    langPath: "https://tessdata.projectnaptha.com/4.0.0"
+    workerPath: "./vendor/tesseract/worker.min.js",
+    corePath: "./vendor/tesseract/tesseract-core-lstm.wasm.js",
+    langPath: "./vendor/tessdata"
   });
   const pages = [];
   try {
