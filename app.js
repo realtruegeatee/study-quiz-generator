@@ -24,7 +24,6 @@ const pdfjsReady = import("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38
   pdfjs.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
   return pdfjs;
 });
-const tesseractReady = import("https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.esm.min.js");
 
 const demoNotes = `Mitochondria are organelles found in most eukaryotic cells. They are often called the powerhouse of the cell because they produce ATP through cellular respiration.
 Photosynthesis converts light energy into chemical energy. It takes place mainly in the chloroplasts of plant cells.
@@ -153,9 +152,9 @@ async function extractPdfText(file) {
 
 async function extractPdfWithOcr(file) {
   const pdfjs = await pdfjsReady;
-  const { createWorker } = await tesseractReady;
+  const { createWorker } = await import("https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.esm.min.js");
   const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
-  const worker = await createWorker("eng+deu", 1, {
+  const worker = await createWorker(["eng", "deu"], 1, {
     langPath: "https://tessdata.projectnaptha.com/4.0.0"
   });
   const pages = [];
