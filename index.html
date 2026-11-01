@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Turn your study notes into bilingual quizzes." />
+    <title>StudySpark — Notes to quizzes</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="StudySpark home">
+          <span class="brand-mark">✦</span>
+          <span>Study<span class="brand-accent">Spark</span></span>
+        </a>
+        <div class="topbar-actions">
+          <span class="status-dot"></span>
+          <span class="saved-label" id="savedLabel">Ready to learn</span>
+          <button class="icon-button" id="languageButton" aria-label="Toggle interface language">DE</button>
+        </div>
+      </header>
+
+      <main>
+        <section class="hero">
+          <div class="eyebrow"><span>✦</span> Your notes, upgraded</div>
+          <h1>Turn notes into <em>momentum.</em></h1>
+          <p>Drop in your study material and get a focused quiz in seconds — in English or German.</p>
+        </section>
+
+        <section class="workspace">
+          <div class="input-panel card">
+            <div class="panel-heading">
+              <div>
+                <span class="step-number">01</span>
+                <h2>Add your material</h2>
+              </div>
+              <span class="file-hint">TXT or MD</span>
+            </div>
+            <label class="drop-zone" id="dropZone" for="fileInput">
+              <input id="fileInput" type="file" accept=".txt,.md,text/plain,text/markdown" hidden />
+              <span class="upload-icon">↑</span>
+              <strong>Drop a file here</strong>
+              <span>or <u>browse your files</u></span>
+            </label>
+            <div class="divider"><span>OR PASTE NOTES</span></div>
+            <textarea id="notesInput" placeholder="Paste a lecture, chapter summary, vocabulary list, or any notes here..."></textarea>
+            <div class="input-footer">
+              <span id="charCount">0 characters</span>
+              <button class="text-button" id="clearButton">Clear</button>
+            </div>
+          </div>
+
+          <div class="settings-panel card">
+            <div class="panel-heading">
+              <div>
+                <span class="step-number">02</span>
+                <h2>Make it yours</h2>
+              </div>
+            </div>
+            <div class="setting">
+              <label for="quizLanguage">Quiz language</label>
+              <div class="segmented" id="quizLanguage">
+                <button class="selected" data-value="en">English</button>
+                <button data-value="de">Deutsch</button>
+              </div>
+            </div>
+            <div class="setting">
+              <label for="questionCount">Number of questions <span id="questionCountValue">5</span></label>
+              <input id="questionCount" type="range" min="3" max="10" value="5" />
+              <div class="range-labels"><span>Quick</span><span>Deep dive</span></div>
+            </div>
+            <div class="setting">
+              <label>Question types</label>
+              <div class="check-list">
+                <label><input type="checkbox" checked id="mcqToggle" /> <span>Multiple choice</span></label>
+                <label><input type="checkbox" checked id="trueFalseToggle" /> <span>True or false</span></label>
+              </div>
+            </div>
+            <button class="primary-button" id="generateButton"><span>Generate quiz</span><span>→</span></button>
+            <p class="privacy-note">✦ Everything stays in your browser for this demo.</p>
+          </div>
+        </section>
+
+        <section class="quiz-section hidden" id="quizSection">
+          <div class="quiz-header">
+            <div>
+              <div class="eyebrow">03 <span>•</span> Active quiz</div>
+              <h2 id="quizTitle">Knowledge check</h2>
+            </div>
+            <div class="quiz-meta"><span id="progressText">1 / 5</span><div class="progress-track"><div id="progressBar"></div></div></div>
+          </div>
+          <div class="quiz-card card">
+            <div class="question-kicker" id="questionType">MULTIPLE CHOICE</div>
+            <h3 id="questionText"></h3>
+            <div class="answer-grid" id="answers"></div>
+            <div class="quiz-actions">
+              <span id="feedback" class="feedback"></span>
+              <button class="primary-button compact" id="nextButton" disabled><span>Next question</span><span>→</span></button>
+            </div>
+          </div>
+        </section>
+
+        <section class="results card hidden" id="resultsSection">
+          <div class="result-spark">✦</div>
+          <div class="eyebrow">Quiz complete</div>
+          <h2><span id="scoreValue">0</span><small>/ <span id="totalValue">5</span></small></h2>
+          <p id="resultMessage">Nice work. Keep the momentum going.</p>
+          <button class="secondary-button" id="retryButton">Try another quiz <span>↗</span></button>
+        </section>
+      </main>
+      <footer><span>StudySpark</span><span>Build better study habits, one question at a time.</span></footer>
+    </div>
+    <script src="./app.js"></script>
+  </body>
+</html>
