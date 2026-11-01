@@ -1,6 +1,8 @@
 const notesInput = document.querySelector("#notesInput");
 const charCount = document.querySelector("#charCount");
 const fileInput = document.querySelector("#fileInput");
+const cameraInput = document.querySelector("#cameraInput");
+const cameraButton = document.querySelector("#cameraButton");
 const dropZone = document.querySelector("#dropZone");
 const generateButton = document.querySelector("#generateButton");
 const questionCount = document.querySelector("#questionCount");
@@ -14,6 +16,9 @@ const feedback = document.querySelector("#feedback");
 const languageButton = document.querySelector("#languageButton");
 const uploadStatus = document.querySelector("#uploadStatus");
 const fileName = document.querySelector("#fileName");
+const filePreview = document.querySelector("#filePreview");
+const imagePreview = document.querySelector("#imagePreview");
+const previewLabel = document.querySelector("#previewLabel");
 const aiKeyInput = document.querySelector("#aiKey");
 const mcqToggle = document.querySelector("#mcqToggle");
 const trueFalseToggle = document.querySelector("#trueFalseToggle");
@@ -24,6 +29,7 @@ let sourceFile = null;
 let currentQuestion = 0;
 let score = 0;
 let answered = false;
+let difficulty = "balanced";
 const MAX_FILE_SIZE = 25 * 1024 * 1024;
 const supportedExtensions = /\.(pdf|txt|md|png|jpe?g|webp)$/i;
 
@@ -37,8 +43,8 @@ Photosynthesis converts light energy into chemical energy. It takes place mainly
 The cell membrane is selectively permeable, meaning it controls which substances enter and leave the cell.`;
 
 const translations = {
-  en: { next: "Next question", correct: "Correct! Nice work.", incorrect: "Not quite. Review this concept.", complete: "Quiz complete", score: "You got", ready: "Ready to learn" },
-  de: { next: "Nächste Frage", correct: "Richtig! Gut gemacht.", incorrect: "Nicht ganz. Wiederhole dieses Konzept.", complete: "Quiz abgeschlossen", score: "Du hast", ready: "Bereit zum Lernen" }
+  en: { next: "Next question", correct: "Correct! Nice work.", incorrect: "Not quite. Review this concept.", complete: "Quiz complete", score: "You got", ready: "Ready to learn", true: "True", false: "False" },
+  de: { next: "Nächste Frage", correct: "Richtig! Gut gemacht.", incorrect: "Nicht ganz. Wiederhole dieses Konzept.", complete: "Quiz abgeschlossen", score: "Du hast", ready: "Bereit zum Lernen", true: "Richtig", false: "Falsch" }
 };
 
 function updateCount() {
@@ -90,7 +96,7 @@ async function makeFileAwareQuiz(file, count, language) {
   const fileData = await getFileDataUrl(file);
   const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
   const types = [mcqToggle.checked ? "multiple choice" : "", trueFalseToggle.checked ? "true or false" : ""].filter(Boolean).join(" and ");
-  const prompt = `Analyze the original study file, including its text, images, diagrams, tables, handwriting, and layout. Create exactly ${count} useful study questions in ${language === "de" ? "German" : "English"}. Use these question types when appropriate: ${types || "multiple choice"}. Return only the requested JSON. For multiple choice, include exactly four options and set answer to the exact correct option. For true or false, include exactly two options: True and False.`;
+  const prompt = `Analyze the original study file, including its text, images, diagrams, tables, handwriting, and layout. Create exactly ${count} useful study questions in ${language === "de" ? "German" : "English"}. Difficulty: ${difficulty}. Use these question types when appropriate: ${types || "multiple choice"}. Return only the requested JSON. For multiple choice, include exactly four options and set answer to the exact correct option. For true or false, include exactly two options: ${language === "de" ? "Richtig and Falsch" : "True and False"}.`;
   const content = [
     { type: "input_text", text: prompt },
     isPdf
@@ -127,17 +133,31 @@ function makeQuiz(text, count, language) {
   const sentences = splitSentences(text);
   const source = sentences.length ? sentences : splitSentences(demoNotes);
   const questions = [];
-  source.slice(0, count).forEach((sentence, index) => {
+  const types = [];
+  if (mcqToggle.checked) types.push("MULTIPLE CHOICE");
+  if (trueFalseToggle.checked) types.push("TRUE OR FALSE");
+  for (let index = 0; index < count; index++) {
+    const sentence = source[index % source.length];
+    const type = types[index % types.length];
     const words = sentence.replace(/[.,!?;:()]/g, "").split(" ").filter(word => word.length > 5);
     const answer = words[Math.floor(words.length / 2)] || "cell";
+    if (type === "TRUE OR FALSE") {
+      questions.push({
+        type,
+        text: language === "de" ? `Richtig oder falsch?\n${sentence}` : `True or false?\n${sentence}`,
+        options: [translations[language].true, translations[language].false],
+        answer: index % 3 === 0 ? translations[language].false : translations[language].true
+      });
+      continue;
+    }
     const prompt = language === "de"
       ? `Welcher Begriff vervollständigt diese Aussage?`
       : `Which term best completes this statement?`;
     const masked = sentence.replace(new RegExp(`\\b${answer}\\b`, "i"), "_____");
     const distractors = ["energy", "nucleus", "water", "protein", "reaction", "membrane"].filter(word => word.toLowerCase() !== answer.toLowerCase());
     const options = [answer, ...distractors.slice(index % 3, index % 3 + 3)].sort(() => Math.random() - .5);
-    questions.push({ type: "MULTIPLE CHOICE", text: `${prompt}\n${masked}`, options, answer });
-  });
+    questions.push({ type, text: `${prompt}\n${masked}`, options, answer });
+  }
   return questions;
 }
 
@@ -154,7 +174,7 @@ function renderQuestion() {
   item.options.forEach((option, index) => {
     const button = document.createElement("button");
     button.className = "answer";
-    button.innerHTML = `<span class="answer-letter">${String.fromCharCode(65 + index)}</span><span>${option}</span>`;
+    button.innerHTML = `<span class="answer-letter">${item.type === "TRUE OR FALSE" ? (index ? "F" : "T") : String.fromCharCode(65 + index)}</span><span>${option}</span>`;
     button.addEventListener("click", () => selectAnswer(button, option, item.answer));
     answers.appendChild(button);
   });
@@ -181,6 +201,7 @@ function selectAnswer(button, selected, correct) {
 async function startQuiz() {
   const text = notesInput.value.trim();
   generateButton.disabled = true;
+  generateButton.querySelector("span").textContent = "Creating...";
   uploadStatus.textContent = aiKeyInput.value.trim() && sourceFile
     ? "Analyzing the original file with AI..."
     : "Making a local quiz...";
@@ -193,6 +214,7 @@ async function startQuiz() {
     console.error("Could not generate an AI quiz", error);
     uploadStatus.textContent = error.message;
     generateButton.disabled = false;
+    generateButton.querySelector("span").textContent = "Generate quiz";
     return;
   }
   generateButton.disabled = false;
@@ -234,6 +256,8 @@ clearButton.addEventListener("click", () => {
   sourceFile = null;
   fileInput.value = "";
   fileName.textContent = "";
+  filePreview.classList.add("hidden");
+  imagePreview.removeAttribute("src");
   uploadStatus.textContent = "";
   updateCount();
   notesInput.focus();
@@ -248,6 +272,12 @@ document.querySelectorAll(".segmented button").forEach(button => button.addEvent
   languageButton.textContent = quizLanguage === "en" ? "DE" : "EN";
   document.querySelector("#savedLabel").textContent = translations[quizLanguage].ready;
   updateCount();
+}));
+document.querySelectorAll("#difficulty button").forEach(button => button.addEventListener("click", () => {
+  document.querySelectorAll("#difficulty button").forEach(item => item.classList.remove("selected"));
+  button.classList.add("selected");
+  difficulty = button.dataset.value;
+  localStorage.setItem("studyspark-difficulty", difficulty);
 }));
 
 async function extractPdfText(file) {
@@ -303,6 +333,13 @@ async function loadFile(file) {
   }
   sourceFile = file;
   fileName.textContent = file.name;
+  previewLabel.textContent = `${file.name} · ${(file.size / 1024 / 1024).toFixed(1)} MB`;
+  if (file.type.startsWith("image/")) {
+    imagePreview.src = URL.createObjectURL(file);
+    filePreview.classList.remove("hidden");
+  } else {
+    filePreview.classList.add("hidden");
+  }
   try {
     const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
     const isImage = file.type.startsWith("image/");
@@ -329,6 +366,12 @@ async function loadFile(file) {
   }
 }
 fileInput.addEventListener("change", event => loadFile(event.target.files[0]));
+cameraInput.addEventListener("change", event => loadFile(event.target.files[0]));
+cameraButton.addEventListener("click", () => cameraInput.click());
+document.addEventListener("paste", event => {
+  const image = [...(event.clipboardData?.files || [])].find(file => file.type.startsWith("image/"));
+  if (image) loadFile(image);
+});
 ["dragenter", "dragover"].forEach(eventName => dropZone.addEventListener(eventName, event => {
   event.preventDefault();
   dropZone.classList.add("dragging");
@@ -338,3 +381,9 @@ fileInput.addEventListener("change", event => loadFile(event.target.files[0]));
   dropZone.classList.remove("dragging");
 }));
 dropZone.addEventListener("drop", event => loadFile(event.dataTransfer.files[0]));
+
+const savedDifficulty = localStorage.getItem("studyspark-difficulty");
+if (savedDifficulty) {
+  const button = document.querySelector(`#difficulty button[data-value="${savedDifficulty}"]`);
+  if (button) button.click();
+}
