@@ -10,7 +10,7 @@ This is a dependency-free browser MVP. Open `index.html` directly, or serve the 
 python3 -m http.server 4173
 ```
 
-Paste notes or upload a `.txt`/`.md` file, choose the quiz language and question count, then generate a quiz. The current demo generates questions locally in the browser, so no API key or backend is required.
+Paste notes or upload a `.pdf`, `.txt`, or `.md` file, choose the quiz language and question count, then generate a quiz. Text-based PDFs are extracted in the browser with PDF.js; scanned/image-only PDFs need OCR and are not currently supported. The current demo generates questions locally in the browser, so no API key or backend is required.
 
 ## GitHub Pages
 

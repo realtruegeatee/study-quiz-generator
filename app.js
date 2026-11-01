@@ -19,6 +19,11 @@ let currentQuestion = 0;
 let score = 0;
 let answered = false;
 
+const pdfjsReady = import("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs").then(pdfjs => {
+  pdfjs.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
+  return pdfjs;
+});
+
 const demoNotes = `Mitochondria are organelles found in most eukaryotic cells. They are often called the powerhouse of the cell because they produce ATP through cellular respiration.
 Photosynthesis converts light energy into chemical energy. It takes place mainly in the chloroplasts of plant cells.
 The cell membrane is selectively permeable, meaning it controls which substances enter and leave the cell.`;
@@ -132,10 +137,32 @@ document.querySelectorAll(".segmented button").forEach(button => button.addEvent
   updateCount();
 }));
 
+async function extractPdfText(file) {
+  const pdfjs = await pdfjsReady;
+  const document = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  const pages = [];
+  for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber++) {
+    const page = await document.getPage(pageNumber);
+    const content = await page.getTextContent();
+    pages.push(content.items.map(item => item.str).join(" "));
+  }
+  return pages.join("\n\n");
+}
+
 async function loadFile(file) {
   if (!file) return;
-  notesInput.value = await file.text();
-  updateCount();
+  try {
+    notesInput.value = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
+      ? await extractPdfText(file)
+      : await file.text();
+    updateCount();
+    if (notesInput.value.trim().length < 30) {
+      feedback.textContent = "This file has little or no selectable text. Try a text-based PDF or paste notes.";
+    }
+  } catch (error) {
+    console.error("Could not read uploaded file", error);
+    feedback.textContent = "Could not read that file. Please try another PDF, TXT, or MD file.";
+  }
 }
 fileInput.addEventListener("change", event => loadFile(event.target.files[0]));
 ["dragenter", "dragover"].forEach(eventName => dropZone.addEventListener(eventName, event => {
